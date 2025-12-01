@@ -40,12 +40,37 @@ public class FilmService {
     }
 
     public List<Film> getMostPopular(Integer count) {
-        if (count == null)
-            count = 10;
         Comparator<Film> comparator = Comparator.comparingInt((f) -> f.getLikes().size());
         comparator = comparator.reversed();
         return filmStorage.getAll().stream().sorted(comparator)
                 .limit(count)
                 .collect(Collectors.toList());
+    }
+
+    public void add(Film film) {
+        filmStorage.save(film);
+    }
+
+    public void deleteFilm(Integer filmId) {
+        if (filmStorage.findById(filmId).isEmpty()) {
+            throw new FilmNotFoundException(filmId);
+        }
+        filmStorage.deleteById(filmId);
+    }
+
+    public Film findById(Integer filmId) {
+        return filmStorage.findById(filmId).orElseThrow(() -> new FilmNotFoundException(filmId));
+    }
+
+
+    public List<Film> getAll() {
+        return filmStorage.getAll();
+    }
+
+    public void update(Film film) {
+        if (filmStorage.findById(film.getId()).isEmpty()) {
+            throw new FilmNotFoundException(film.getId());
+        }
+        filmStorage.update(film);
     }
 }

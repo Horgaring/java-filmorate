@@ -19,30 +19,18 @@ public class UserService {
     }
 
     public void addToFriendList(int userId, int friendId) throws UserNotFoundException {
-        var user = userStorage.findById(userId);
-        var friend = userStorage.findById(friendId);
-        if (user.isEmpty()) {
-            throw new UserNotFoundException(userId);
-        }
-        if (friend.isEmpty()) {
-            throw new UserNotFoundException(friendId);
-        }
-        user.get().getFriendList().add(friend.get().getId());
-        friend.get().getFriendList().add(user.get().getId());
+        var user = userStorage.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        var friend = userStorage.findById(friendId).orElseThrow(() -> new UserNotFoundException(friendId));
+        user.getFriendList().add(friend.getId());
+        friend.getFriendList().add(user.getId());
         log.info("Added user {} to friend list {}", userId, friendId);
     }
 
     public void deleteFromFriendList(int userId, int friendId) throws UserNotFoundException {
-        var user = userStorage.findById(userId);
-        var friend = userStorage.findById(friendId);
-        if (user.isEmpty()) {
-            throw new UserNotFoundException(userId);
-        }
-        if (friend.isEmpty()) {
-            throw new UserNotFoundException(friendId);
-        }
-        user.get().getFriendList().remove(friend.get().getId());
-        friend.get().getFriendList().remove(user.get().getId());
+        var user = userStorage.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        var friend = userStorage.findById(friendId).orElseThrow(() -> new UserNotFoundException(friendId));
+        user.getFriendList().remove(friend.getId());
+        friend.getFriendList().remove(user.getId());
         log.info("Removed user {} from friend list {}", userId, friendId);
     }
 
@@ -57,16 +45,13 @@ public class UserService {
 
         log.debug("Second user {} has {} friends", secondUserId, secondUserFriends.size());
 
-        List<Integer> firstUserFriends = userStorage.findById(userId)
+        var firstUserFriends = userStorage.findById(userId)
                 .orElseThrow(() -> {
-
                     return new UserNotFoundException(userId);
                 })
-                .getFriendList().stream().toList();
-
+                .getFriendList();
+        firstUserFriends.retainAll(secondUserFriends);
         List<User> shared = firstUserFriends.stream()
-                .filter(secondUserFriends::contains)
-                .distinct()
                 .map(s -> userStorage.findById(s).get())
                 .collect(Collectors.toList());
 
@@ -86,5 +71,31 @@ public class UserService {
                 .toList();
         log.debug("Friends: {}", friends);
         return friends;
+    }
+
+    public void add(User user) {
+        userStorage.save(user);
+    }
+
+    public void update(User user) {
+        if (userStorage.findById(user.getId()).isEmpty()) {
+            throw new UserNotFoundException(user.getId());
+        }
+        userStorage.update(user);
+    }
+
+    public void deleteById(Integer userId) {
+        userStorage.deleteById(userId);
+    }
+
+    public User findById(Integer userId) {
+        if (userStorage.findById(userId).isEmpty()) {
+            throw new UserNotFoundException(userId);
+        }
+        return userStorage.findById(userId).get();
+    }
+
+    public List<User> findAll() {
+        return userStorage.getAll();
     }
 }

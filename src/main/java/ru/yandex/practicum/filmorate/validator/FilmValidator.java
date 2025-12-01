@@ -1,18 +1,15 @@
 package ru.yandex.practicum.filmorate.validator;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
 
 @Slf4j
-@Service
-public class FilmValidator implements Validator<Film> {
+public class FilmValidator {
 
-    @Override
-    public boolean validate(Film film) throws ValidationException {
+    public static boolean validate(Film film) throws ValidationException {
         if (film == null) {
             log.warn("Film is null");
             throw new ValidationException("Film is null");

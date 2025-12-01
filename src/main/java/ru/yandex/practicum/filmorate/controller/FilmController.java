@@ -2,11 +2,8 @@ package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.validator.FilmValidator;
 
 import java.util.List;
@@ -16,40 +13,28 @@ import java.util.List;
 @RequestMapping("/films")
 public class FilmController {
     private FilmService filmService;
-    private FilmStorage filmStorage;
-    private FilmValidator filmValidator;
-    private int counter = 1;
 
-    public FilmController(FilmValidator validator,  FilmService filmService, FilmStorage filmStorage) {
-        this.filmValidator = validator;
+    public FilmController(FilmService filmService) {
         this.filmService = filmService;
-        this.filmStorage = filmStorage;
     }
 
     @PostMapping
     public Film post(@RequestBody Film film) {
-        filmValidator.validate(film);
-        film.setId(this.counter++);
-        filmStorage.save(film);
+        FilmValidator.validate(film);
+        filmService.add(film);
         log.info("Film {} created", film.getId());
         return film;
     }
 
     @GetMapping()
     public List<Film> get() {
-        return filmStorage.getAll();
+        return filmService.getAll();
     }
 
     @PutMapping()
     public Film put(@RequestBody Film film) {
-        filmValidator.validate(film);
-        if (filmStorage.findById(film.getId()).isEmpty()) {
-            throw new FilmNotFoundException(film.getId());
-        }
-
-        filmStorage.getAll().stream()
-                .filter((s) -> s.getId() == film.getId())
-                .forEach((s) -> s = film);
+        FilmValidator.validate(film);
+        filmService.update(film);
         log.info("Film {} updated", film.getId());
         return film;
     }
@@ -58,7 +43,7 @@ public class FilmController {
     public Film putLike(@PathVariable Integer id, @PathVariable Integer userId) {
         filmService.like(userId, id);
         log.info("Film {} liked by user {}", id,  userId);
-        return filmStorage.findById(id).get();
+        return filmService.findById(id);
     }
 
     @DeleteMapping("/{id}/like/{userId}")
@@ -69,14 +54,11 @@ public class FilmController {
 
     @GetMapping("/{id}")
     public Film get(@PathVariable Integer id) {
-        var film = filmStorage.findById(id);
-        if (film.isEmpty())
-            throw new UserNotFoundException(id);
-        return film.get();
+        return filmService.findById(id);
     }
 
     @GetMapping("/popular")
-    public List<Film> getPopular(@RequestParam(required = false) Integer count) {
+    public List<Film> getPopular(@RequestParam(required = false, defaultValue = "10") Integer count) {
         return filmService.getMostPopular(count);
     }
 }
