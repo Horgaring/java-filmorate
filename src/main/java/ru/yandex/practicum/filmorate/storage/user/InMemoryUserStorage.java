@@ -20,10 +20,7 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public Optional<User> findById(Integer id) {
-        if (users.containsKey(id)) {
-            return Optional.of(users.get(id));
-        }
-        return Optional.empty();
+        return Optional.ofNullable(users.get(id));
     }
 
     @Override
