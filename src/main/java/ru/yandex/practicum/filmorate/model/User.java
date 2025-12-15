@@ -19,9 +19,9 @@ public class User {
     private String login;
     private String name;
     private LocalDate birthday;
-    private Set<Integer> friendList;
+    private Set<Friendship> friendList;
 
-    public Set<Integer> getFriendList() {
+    public Set<Friendship> getFriendList() {
         if (friendList == null) {
             friendList = new HashSet<>();
         }
