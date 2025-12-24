@@ -18,7 +18,7 @@ class FilmorateApplicationTests {
     @Test
     void shouldThrowValidationExceptionWithFilmIsNull() {
         var validator = new FilmValidator();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(null));
+        Assertions.assertThrows(ValidationException.class, () -> FilmValidator.validate(null));
     }
 
     @Test
@@ -30,7 +30,7 @@ class FilmorateApplicationTests {
                 .releaseDate(LocalDate.now())
                 .duration(100)
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(film));
+        Assertions.assertThrows(ValidationException.class, () -> FilmValidator.validate(film));
     }
 
     @Test
@@ -42,7 +42,7 @@ class FilmorateApplicationTests {
                 .releaseDate(LocalDate.now())
                 .duration(100)
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(film));
+        Assertions.assertThrows(ValidationException.class, () -> FilmValidator.validate(film));
     }
 
     @Test
@@ -54,7 +54,7 @@ class FilmorateApplicationTests {
                 .releaseDate(LocalDate.now())
                 .duration(100)
                 .build();
-        Assertions.assertTrue(validator.validate(film));
+        Assertions.assertTrue(FilmValidator.validate(film));
     }
 
     @Test
@@ -66,7 +66,7 @@ class FilmorateApplicationTests {
                 .releaseDate(LocalDate.now())
                 .duration(100)
                 .build();
-        Assertions.assertTrue(validator.validate(film));
+        Assertions.assertTrue(FilmValidator.validate(film));
     }
 
     @Test
@@ -78,7 +78,7 @@ class FilmorateApplicationTests {
                 .releaseDate(LocalDate.of(1890, 1, 1))
                 .duration(100)
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(film));
+        Assertions.assertThrows(ValidationException.class, () -> FilmValidator.validate(film));
     }
 
     @Test
@@ -90,7 +90,7 @@ class FilmorateApplicationTests {
                 .login("a")
                 .birthday(LocalDate.now())
                 .build();
-        Assertions.assertTrue(validator.validate(user));
+        Assertions.assertTrue(UserValidator.validate(user));
     }
 
     @Test
@@ -102,7 +102,7 @@ class FilmorateApplicationTests {
                 .login("a")
                 .birthday(LocalDate.now())
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(user));
+        Assertions.assertThrows(ValidationException.class, () -> UserValidator.validate(user));
     }
 
     @Test
@@ -114,7 +114,7 @@ class FilmorateApplicationTests {
                 .login("a")
                 .birthday(LocalDate.now())
                 .build();
-        Assertions.assertTrue(validator.validate(user));
+        Assertions.assertTrue(UserValidator.validate(user));
     }
 
     @Test
@@ -126,7 +126,7 @@ class FilmorateApplicationTests {
                 .login(" ")
                 .birthday(LocalDate.now())
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(user));
+        Assertions.assertThrows(ValidationException.class, () -> UserValidator.validate(user));
     }
 
     @Test
@@ -138,7 +138,7 @@ class FilmorateApplicationTests {
                 .login("a")
                 .birthday(LocalDate.now())
                 .build();
-        Assertions.assertTrue(validator.validate(user));
+        Assertions.assertTrue(UserValidator.validate(user));
     }
 
     @Test
@@ -150,6 +150,6 @@ class FilmorateApplicationTests {
                 .login("shshj")
                 .birthday(LocalDate.now().plusDays(1))
                 .build();
-        Assertions.assertThrows(ValidationException.class, () -> validator.validate(user));
+        Assertions.assertThrows(ValidationException.class, () -> UserValidator.validate(user));
     }
 }
