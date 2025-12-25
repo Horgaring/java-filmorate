@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.model.Rating;
-import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.service.RatingService;
 
 import java.util.List;
 
@@ -14,22 +14,22 @@ import java.util.List;
 @RestController
 @RequestMapping("/mpa")
 public class MpaController {
-    private final FilmService filmService;
+    private final RatingService mpaService;
 
-    public MpaController(FilmService filmService) {
-        this.filmService = filmService;
+    public MpaController(RatingService mpaService) {
+        this.mpaService = mpaService;
     }
 
 
     @GetMapping()
     public List<Rating> get() {
-        return filmService.getRating();
+        return mpaService.getRating();
     }
 
 
     @GetMapping("/{id}")
     public Rating getRatingById(@PathVariable Integer id) {
-        return filmService.getRating(id);
+        return mpaService.getRating(id);
     }
 
 

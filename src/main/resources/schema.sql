@@ -25,7 +25,7 @@ CREATE TABLE  films
     description  TEXT         NOT NULL,
     release_date DATE,
     duration     INTEGER CHECK (duration > 0),
-    mpa       INTEGER NOT NULL REFERENCES mpa(id)
+    mpa       INTEGER REFERENCES mpa(id)
 );
 
 CREATE TABLE  film_genres

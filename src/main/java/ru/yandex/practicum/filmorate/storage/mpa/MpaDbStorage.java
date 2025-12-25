@@ -14,25 +14,36 @@ import java.util.Optional;
 public class MpaDbStorage {
     private final JdbcTemplate jdbc;
 
+    private static final String SQL_GET_ALL_RATINGS =
+            "SELECT g.id AS id, g.name AS name FROM mpa AS g";
+
+    private static final String SQL_GET_RATING_BY_ID =
+            "SELECT g.id AS id, g.name AS name FROM mpa AS g WHERE g.id = ?";
+
     @Autowired
     public MpaDbStorage(JdbcTemplate jdbcTemplate) {
         this.jdbc = jdbcTemplate;
     }
 
     public List<Rating> getRating() {
-        return jdbc.query("SELECT * FROM mpa\n",
-                new BeanPropertyRowMapper<>(Rating.class));
+        return jdbc.query(
+                SQL_GET_ALL_RATINGS,
+                new BeanPropertyRowMapper<>(Rating.class)
+        );
     }
 
     public Rating getRating(int id) {
-        return jdbc.queryForObject("SELECT * FROM mpa AS g\n" +
-                "WHERE g.id = ?", new BeanPropertyRowMapper<>(Rating.class), id);
+        return jdbc.queryForObject(
+                SQL_GET_RATING_BY_ID,
+                new BeanPropertyRowMapper<>(Rating.class),
+                id
+        );
     }
 
     public Optional<Rating> findById(Integer id) {
         try {
             Rating genre = jdbc.queryForObject(
-                    "SELECT * FROM mpa WHERE id = ?",
+                    SQL_GET_RATING_BY_ID,
                     new BeanPropertyRowMapper<>(Rating.class),
                     id
             );
@@ -42,4 +53,3 @@ public class MpaDbStorage {
         }
     }
 }
-

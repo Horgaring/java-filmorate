@@ -3,20 +3,51 @@ package ru.yandex.practicum.filmorate.storage.user;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.model.FriendshipStatus;
 import ru.yandex.practicum.filmorate.model.User;
 
-import java.sql.*;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 
-@Component("UserDbStorage")
+@Component
 public class UserDbStorage implements UserStorage {
 
+    private static final String SQL_INSERT_USER =
+            "INSERT INTO \"users\" (email, login, name, birthday) VALUES (?, ?, ?, ?)";
+    private static final String SQL_SELECT_USER_BY_ID =
+            "SELECT * FROM \"users\" WHERE id = ?";
+    private static final String SQL_SELECT_ALL_USERS =
+            "SELECT * FROM \"users\"";
+    private static final String SQL_DELETE_USER_BY_ID =
+            "DELETE FROM \"users\" WHERE id = ?";
+    private static final String SQL_UPDATE_USER =
+            "UPDATE \"users\" SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
+    private static final String SQL_INSERT_FRIENDSHIP =
+            "INSERT INTO friendship (requester_id, addressee_id, status) VALUES (?, ?, ?)";
+    private static final String SQL_DELETE_FRIENDSHIP =
+            "DELETE FROM friendship WHERE requester_id = ? AND addressee_id = ?";
+    private static final String SQL_SELECT_SHARED_FRIENDS =
+            "WITH user1_friends AS (" +
+                    "    SELECT addressee_id AS friend_id FROM friendship WHERE requester_id = ?" +
+                    "), " +
+                    "user2_friends AS (" +
+                    "    SELECT addressee_id AS friend_id FROM friendship WHERE requester_id = ?" +
+                    ") " +
+                    "SELECT u.* FROM \"users\" u WHERE u.id IN (" +
+                    "    SELECT friend_id FROM user1_friends " +
+                    "    INTERSECT " +
+                    "    SELECT friend_id FROM user2_friends" +
+                    ")";
+    private static final String SQL_SELECT_FRIENDS_BY_ID =
+            "SELECT * FROM \"users\" WHERE id IN (" +
+                    "  SELECT addressee_id AS id FROM friendship WHERE requester_id = ?" +
+                    ")";
     private final JdbcTemplate jdbc;
 
     @Autowired
@@ -27,56 +58,40 @@ public class UserDbStorage implements UserStorage {
     @Override
     public void save(User user) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
-
         jdbc.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO \"users\" (email, login, name, birthday) VALUES (?, ?, ?, ?)",
-                    Statement.RETURN_GENERATED_KEYS
-            );
+            PreparedStatement ps = connection.prepareStatement(SQL_INSERT_USER, Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
             ps.setString(3, user.getName());
             ps.setDate(4, Date.valueOf(user.getBirthday()));
             return ps;
         }, keyHolder);
-
-        Integer generatedId = keyHolder.getKey().intValue();
-        user.setId(generatedId);
+        user.setId(keyHolder.getKey().intValue());
     }
-
 
     @Override
     public Optional<User> findById(Integer id) {
         try {
-            User user = jdbc.queryForObject(
-                    "SELECT * FROM \"users\" WHERE id = ?",
-                    new UserRowMapper(),
-                    id
-            );
+            User user = jdbc.queryForObject(SQL_SELECT_USER_BY_ID, new UserRowMapper(), id);
             return Optional.of(user);
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
     }
 
-
-
-
     @Override
     public List<User> getAll() {
-        return jdbc.query("SELECT * FROM \"users\"",
-                new UserRowMapper());
+        return jdbc.query(SQL_SELECT_ALL_USERS, new UserRowMapper());
     }
 
     @Override
     public void deleteById(Integer id) {
-        jdbc.update("DELETE FROM \"users\" WHERE id = ?", id);
+        jdbc.update(SQL_DELETE_USER_BY_ID, id);
     }
 
     @Override
     public void update(User film) {
-        jdbc.update("UPDATE  \"users\" SET email = ?, login = ?, name = ?, birthday = ?\n" +
-                        "WHERE id = ?;",
+        jdbc.update(SQL_UPDATE_USER,
                 film.getEmail(),
                 film.getLogin(),
                 film.getName(),
@@ -86,67 +101,23 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public void addFriend(int userId, int friendId) {
-        jdbc.update("INSERT INTO friendship (requester_id, addressee_id, status) VALUES \n" +
-                        "(?, ?, ?);",
-                userId,
-                friendId,
-                FriendshipStatus.PENDING.name());
+        jdbc.update(SQL_INSERT_FRIENDSHIP, userId, friendId, FriendshipStatus.PENDING.name());
     }
 
     @Override
     public void removeFriend(int userId, int friendId) {
-        jdbc.update("DELETE FROM friendship WHERE  requester_id = ? AND addressee_id = ?",
-                userId,
-                friendId);
+        jdbc.update(SQL_DELETE_FRIENDSHIP, userId, friendId);
     }
 
     @Override
     public List<User> getSharedFriends(int userId, int secondUserId) {
-        return jdbc.query("WITH user1_friends AS (" +
-                        "    SELECT addressee_id AS friend_id " +
-                        "    FROM friendship " +
-                        "    WHERE requester_id = ? " +
-                        "), " +
-                        "user2_friends AS (" +
-                        "    SELECT addressee_id AS friend_id " +
-                        "    FROM friendship " +
-                        "    WHERE requester_id = ? " +
-                        ") " +
-                        "SELECT u.* " +
-                        "FROM \"users\" u " +
-                        "WHERE u.id IN (" +
-                        "    SELECT friend_id FROM user1_friends " +
-                        "    INTERSECT " +
-                        "    SELECT friend_id FROM user2_friends " +
-                        ")",
-                new UserRowMapper(),
-                userId, secondUserId);
+        return jdbc.query(SQL_SELECT_SHARED_FRIENDS, new UserRowMapper(), userId, secondUserId);
     }
 
     @Override
     public List<User> getFriendsById(int userId) {
-        return jdbc.query("SELECT *\n" +
-                "FROM \"users\" \n" +
-                "WHERE id IN (\n" +
-                "  SELECT addressee_id AS id\n" +
-                "  FROM friendship\n" +
-                "  WHERE requester_id = ?\n" +
-                ");",
-                new UserRowMapper(),
-                userId);
+        return jdbc.query(SQL_SELECT_FRIENDS_BY_ID, new UserRowMapper(), userId);
     }
 
-    class UserRowMapper implements RowMapper<User> {
 
-        @Override
-        public User mapRow(ResultSet rs, int rowNum) throws SQLException {
-            User user = new User();
-            user.setId(rs.getInt("id"));
-            user.setName(rs.getString("name"));
-            user.setEmail(rs.getString("email"));
-            user.setLogin(rs.getString("login"));
-            user.setBirthday(rs.getDate("birthday").toLocalDate());
-            return user;
-        }
-    }
 }

@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.storage.film;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Component;
@@ -11,20 +10,45 @@ import ru.yandex.practicum.filmorate.exception.GenreNotFoundException;
 import ru.yandex.practicum.filmorate.exception.MpaNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.model.Rating;
 import ru.yandex.practicum.filmorate.storage.genre.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.mpa.MpaDbStorage;
 
-import java.sql.*;
 import java.sql.Date;
-import java.util.*;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
+import java.util.List;
+import java.util.Optional;
+import java.util.TreeSet;
 
-@Component("FilmDbStorage")
+@Component
 public class FilmDbStorage implements FilmStorage {
 
+    private static final String insertFilmQuery =
+            "INSERT INTO films (name, description, release_date, duration, mpa) VALUES (?, ?, ?, ?, ?)";
+    private static final String findByIdQuery =
+            "SELECT * FROM films WHERE id = ?";
+    private static final String insertLikeQuery =
+            "INSERT INTO \"likes\" (film_id, user_id) VALUES (?, ?)";
+    private static final String deleteLikeQuery =
+            "DELETE FROM \"likes\" WHERE film_id = ? AND user_id = ?";
+    private static final String mostPopularFilmsQuery =
+            "SELECT f.*\n" +
+                    "FROM films as f\n" +
+                    "LEFT JOIN \"likes\" AS l ON l.film_id = f.id\n" +
+                    "GROUP BY f.id\n" +
+                    "ORDER BY COUNT(*) DESC\n" +
+                    "LIMIT ?;";
+    private static final String getAllQuery =
+            "SELECT * FROM films";
+    private static final String deleteFilmQuery =
+            "DELETE FROM films WHERE id = ?";
+    private static final String updateFilmQuery =
+            "UPDATE  films SET name = ?, description = ?, release_date = ?, duration = ?\n" +
+                    "WHERE id = ?;";
     private final JdbcTemplate jdbc;
     private final GenreDbStorage genreDbStorage;
     private final MpaDbStorage mpaDbStorage;
+
 
     @Autowired
     public FilmDbStorage(JdbcTemplate jdbcTemplate, GenreDbStorage genreDbStorage, MpaDbStorage mpaDbStorage) {
@@ -36,46 +60,30 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public void save(Film film) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
-
-
-
-        if (film.getMpa() == null) {
-            jdbc.update(connection -> {
-                PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO films (name, description, release_date, duration) VALUES (?, ?, ?, ?)",
-                        Statement.RETURN_GENERATED_KEYS
-                );
-                ps.setString(1, film.getName());
-                ps.setString(2, film.getDescription());
-                ps.setDate(3, Date.valueOf(film.getReleaseDate()));
-                ps.setInt(4, film.getDuration());
-                return ps;
-            }, keyHolder);
-        } else {
-            if (mpaDbStorage.findById(film.getMpa().getId()).isEmpty()) {
-                throw new MpaNotFoundException(film.getMpa().getId());
-            }
-            jdbc.update(connection -> {
-                PreparedStatement ps = connection.prepareStatement(
-                        "INSERT INTO films (name, description, release_date, duration, mpa) VALUES (?, ?, ?, ?, ?)",
-                        Statement.RETURN_GENERATED_KEYS
-                );
-                ps.setString(1, film.getName());
-                ps.setString(2, film.getDescription());
-                ps.setDate(3, Date.valueOf(film.getReleaseDate()));
-                ps.setInt(4, film.getDuration());
+        jdbc.update(connection -> {
+            PreparedStatement ps = connection.prepareStatement(
+                    insertFilmQuery,
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            ps.setString(1, film.getName());
+            ps.setString(2, film.getDescription());
+            ps.setDate(3, Date.valueOf(film.getReleaseDate()));
+            ps.setInt(4, film.getDuration());
+            if (film.getMpa() != null) {
+                if (mpaDbStorage.findById(film.getMpa().getId()).isEmpty()) {
+                    throw new MpaNotFoundException(film.getMpa().getId());
+                }
                 ps.setInt(5, film.getMpa().getId());
-                return ps;
-            }, keyHolder);
-        }
-
+            }
+            return ps;
+        }, keyHolder);
 
         Integer generatedId = keyHolder.getKey().intValue();
         film.setId(generatedId);
         if (film.getGenres() != null) {
             for (Genre genre : film.getGenres()) {
                 if (genreDbStorage.getGenre(genre.getId()).isEmpty()) {
-                    throw  new GenreNotFoundException(genre.getId());
+                    throw new GenreNotFoundException(genre.getId());
                 }
                 genreDbStorage.addGenre(film.getId(), genre);
             }
@@ -86,7 +94,7 @@ public class FilmDbStorage implements FilmStorage {
     public Optional<Film> findById(Integer id) {
         try {
             Film film = jdbc.queryForObject(
-                    "SELECT * FROM films WHERE id = ?",
+                    findByIdQuery,
                     new FilmRowMapper(),
                     id
             );
@@ -99,46 +107,36 @@ public class FilmDbStorage implements FilmStorage {
     }
 
 
-
     @Override
     public void like(Integer userId, Integer filmId) {
-        jdbc.update("INSERT INTO \"likes\" (film_id, user_id) VALUES (?, ?)",filmId,userId);
+        jdbc.update(insertLikeQuery, filmId, userId);
     }
 
     @Override
     public void unlike(Integer userId, Integer filmId) {
-        jdbc.update("DELETE FROM \"likes\" WHERE film_id = ? AND user_id = ?",filmId,userId);
+        jdbc.update(deleteLikeQuery, filmId, userId);
     }
 
     @Override
     public List<Film> getMostPopular(Integer count) {
-        return jdbc.query("SELECT f.*\n" +
-                "FROM films as f\n" +
-                "LEFT JOIN \"likes\" AS l ON l.film_id = f.id\n" +
-                "GROUP BY f.id\n" +
-                "ORDER BY COUNT(*) DESC\n" +
-                "LIMIT ?;",new FilmRowMapper(),count);
+        return jdbc.query(mostPopularFilmsQuery, new FilmRowMapper(), count);
     }
-
-
-
 
 
     @Override
     public List<Film> getAll() {
-        return jdbc.query("SELECT * FROM films",
+        return jdbc.query(getAllQuery,
                 new FilmRowMapper());
     }
 
     @Override
     public void deleteById(Integer id) {
-        jdbc.update("DELETE FROM films WHERE id = ?", id);
+        jdbc.update(deleteFilmQuery, id);
     }
 
     @Override
     public void update(Film film) {
-        jdbc.update("UPDATE  films SET name = ?, description = ?, release_date = ?, duration = ?\n" +
-                        "WHERE id = ?;",
+        jdbc.update(updateFilmQuery,
                 film.getName(),
                 film.getDescription(),
                 film.getReleaseDate(),
@@ -146,19 +144,5 @@ public class FilmDbStorage implements FilmStorage {
                 film.getId());
     }
 
-    class FilmRowMapper implements RowMapper<Film> {
 
-        @Override
-        public Film mapRow(ResultSet rs, int rowNum) throws SQLException {
-            Film film = new Film();
-            film.setId(rs.getInt("id"));
-            film.setName(rs.getString("name"));
-            film.setDescription(rs.getString("description"));
-            film.setDuration(rs.getInt("duration"));
-            film.setReleaseDate(rs.getDate("release_date").toLocalDate());
-            film.setMpa(new Rating(rs.getInt("mpa"),""));
-
-            return film;
-        }
-    }
 }
