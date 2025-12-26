@@ -6,10 +6,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 
 @Getter
 @ResponseStatus(HttpStatus.NOT_FOUND)
-public class FilmNotFoundException extends RuntimeException {
-    private final Integer filmId;
+public class MpaNotFoundException extends RuntimeException {
+    private final Integer mpaId;
 
-    public FilmNotFoundException(Integer filmId) {
-        this.filmId = filmId;
+    public MpaNotFoundException(Integer mpa) {
+        this.mpaId = mpa;
     }
 }

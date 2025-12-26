@@ -5,10 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.yandex.practicum.filmorate.exception.ErrorResponse;
-import ru.yandex.practicum.filmorate.exception.FilmNotFoundException;
-import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
-import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.exception.*;
 
 @RestControllerAdvice
 @Slf4j
@@ -25,6 +22,20 @@ public class ControllerAdvice {
     public ErrorResponse handleFilmNotFound(FilmNotFoundException ex) {
         log.warn("Film not found: {}", ex.getMessage());
         return new ErrorResponse("Film not found", "Film " + ex.getFilmId() + " not found");
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(MpaNotFoundException.class)
+    public ErrorResponse handleMpaNotFound(MpaNotFoundException ex) {
+        log.warn("Mpa not found: {}", ex.getMessage());
+        return new ErrorResponse("Mpa not found", "Mpa " + ex.getMessage() + " not found");
+    }
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(GenreNotFoundException.class)
+    public ErrorResponse handleMpaNotFound(GenreNotFoundException ex) {
+        log.warn("Genre not found: {}", ex.getMessage());
+        return new ErrorResponse("Genre not found", "Genre " + ex.getMessage() + " not found");
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
